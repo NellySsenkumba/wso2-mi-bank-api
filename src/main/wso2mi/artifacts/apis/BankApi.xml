@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api name="BankApi" context="/BankApi" xmlns="http://ws.apache.org/ns/synapse">
+    <resource methods="GET" uri-template="/accounts">
+        <inSequence>
+            <call>
+                <endpoint key="accounts"/>
+            </call>
+            <respond/>
+        </inSequence>
+        <faultSequence/>
+    </resource>
+    <resource methods="POST" uri-template="/onboard">
+        <inSequence>
+            <propertyGroup>
+                <property name="currency" scope="default" type="STRING" expression="json-eval($.currency)" action="set"/>
+                <property name="account_title" scope="default" type="STRING" expression="json-eval($.account_title)" action="set"/>
+                <property name="amount" scope="default" type="STRING" expression="json-eval($.amount)" action="set"/>
+                <property name="depositor_name" scope="default" type="STRING" expression="json-eval($.depositor_name)" action="set"/>
+                <property name="depositor_phone" scope="default" type="STRING" expression="json-eval($.depositor_phone)" action="set"/>
+                <property name="email" scope="default" type="STRING" expression="json-eval($.email)"/>
+                <property name="transaction_narration" scope="default" type="STRING" expression="json-eval($.transaction_narration)" action="set"/>
+            </propertyGroup>
+            <call>
+                <endpoint key="create-customer"/>
+            </call>
+            <payloadFactory media-type="json" template-type="default">
+                <format>{
+                    "currency": "$1",
+                    "customer_email": "$2",
+                    "account_title": "$3"
+                    }</format>
+                <args>
+                    <arg expression="get-property('currency')" evaluator="xml"/>
+                    <arg expression="get-property('email')" evaluator="xml"/>
+                    <arg expression="get-property('account_title')" evaluator="xml"/>
+                </args>
+            </payloadFactory>
+            <call>
+                <endpoint key="create-account"/>
+            </call>
+            <property name="account_number" scope="default" type="STRING" expression="json-eval($.accountNumber)"/>
+            <dblookup>
+                <connection>
+                    <pool>
+                        <driver>org.postgresql.Driver</driver>
+                        <url>jdbc:postgresql://localhost:5433/wso2mi_demo</url>
+                        <user>postgres</user>
+                        <password>secret</password>
+                    </pool>
+                </connection>
+                <statement>
+                    <sql><![CDATA[select 1]]></sql>
+                </statement>
+            </dblookup>
+            <payloadFactory media-type="json" template-type="default">
+                <format>{
+                    "account_number": "$1"
+                    }</format>
+                <args>
+                    <arg expression="get-property('account_number')" evaluator="xml"/>
+                </args>
+            </payloadFactory>
+            <call>
+                <endpoint key="activate-account"/>
+            </call>
+            <payloadFactory media-type="json" template-type="default">
+                <format>{
+                    "account_number": "$1",
+                    "amount": "$2",
+                    "depositor_name": "$3",
+                    "depositor_phone": "$4",
+                    "transaction_narration":"Initial deposit"
+                    }</format>
+                <args>
+                    <arg expression="get-property('account_number')" evaluator="xml"/>
+                    <arg expression="get-property('amount')" evaluator="xml"/>
+                    <arg expression="get-property('depositor_name')" evaluator="xml"/>
+                    <arg expression="get-property('depositor_phone')" evaluator="xml"/>
+                </args>
+            </payloadFactory>
+            <call>
+                <endpoint key="deposit"/>
+            </call>
+            <respond/>
+        </inSequence>
+        <faultSequence/>
+    </resource>
+</api>
